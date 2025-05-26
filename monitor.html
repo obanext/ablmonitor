@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OBA Datasource Monitor</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f0f0f0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-auto-rows: 1fr;
+      gap: 10px;
+      padding: 10px;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    .tile {
+      background-color: green;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    }
+    .tile.red {
+      background-color: red;
+    }
+    .tile.green {
+      background-color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    async function fetchAndRender() {
+      try {
+        const res = await fetch('https://zoeken.oba.nl/monitor.ashx?import=true');
+        const xmlText = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'application/xml');
+        const datasources = xml.querySelectorAll('datasource');
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+
+        datasources.forEach(ds => {
+          const dsid = ds.querySelector('dsid')?.textContent || '';
+          const dbAge = parseFloat(ds.querySelector('db-age-days')?.textContent || '0');
+          const total = ds.querySelector('total-record-count')?.textContent || '0';
+          const status = ds.querySelector('status')?.textContent || '';
+
+          const tile = document.createElement('div');
+          tile.classList.add('tile');
+          if (status === 'ERROR' || dbAge > 0.5) {
+            tile.classList.add('red');
+          } else {
+            tile.classList.add('green');
+          }
+
+          tile.innerHTML = `
+            <strong>${dsid}</strong>
+            <div>tijd: ${dbAge.toFixed(2)}</div>
+            <div>aantal: ${total}</div>
+            <div>status: ${status}</div>
+          `;
+          grid.appendChild(tile);
+        });
+      } catch (e) {
+        console.error('Fout bij ophalen/parsen:', e);
+      }
+    }
+
+    fetchAndRender();
+    setInterval(fetchAndRender, 3600000); // elke 1 uur
+  </script>
+</body>
+</html>
