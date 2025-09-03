@@ -163,7 +163,10 @@
 
         // Bronnen in vaste volgorde renderen
         Object.keys(sourceLabels).forEach(key => {
-          const ds = Array.from(datasources).find(d => d.querySelector('dsid')?.textContent === key);
+          const ds = Array.from(datasources).find(d => {
+            const val = (d.querySelector('dsid')?.textContent || '').trim();
+            return val === key;
+          });
 
           if (!ds) {
             const tile = document.createElement('div');
@@ -177,16 +180,16 @@
             return;
           }
 
-          const dbAgeDays = parseFloat(ds.querySelector('db-age-days')?.textContent || '0');
-          const total = ds.querySelector('total-record-count')?.textContent || '0';
-          const status = ds.querySelector('status')?.textContent || '';
+          const dbAgeDays = parseFloat((ds.querySelector('db-age-days')?.textContent || '0').trim());
+          const total = (ds.querySelector('total-record-count')?.textContent || '0').trim();
+          const status = (ds.querySelector('status')?.textContent || '').trim();
           const dbAgeHours = dbAgeDays * 24;
 
           let isProblem = false;
           if (key === 'library/v/oba') {
-            isProblem = status === 'ERROR' || dbAgeDays > 1;
+            isProblem = status === 'ERROR' || dbAgeDays >= 1;
           } else {
-            isProblem = status === 'ERROR' || dbAgeDays > 0.25; // 6 uur
+            isProblem = status === 'ERROR' || dbAgeDays >= 0.25; // 6 uur
           }
 
           const tile = document.createElement('div');
