@@ -4,7 +4,5 @@
   "scripts": {
     "start": "vercel dev"
   },
-  "dependencies": {
-    "xmldom": "^0.8.10"
-  }
+  "dependencies": {}
 }
