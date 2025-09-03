@@ -34,6 +34,19 @@
       margin-top: 5px;
       color: #ccc;
     }
+    .section {
+      padding: 10px;
+    }
+    .section h2 {
+      margin: 10px 0;
+      font-size: 18px;
+      color: #333;
+    }
+    .section p {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #555;
+    }
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -51,6 +64,7 @@
       justify-content: center;
       font-size: 14px;
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      min-height: 100px;
     }
     .tile.red { background-color: red; }
     .tile.green { background-color: green; }
@@ -65,12 +79,23 @@
     <button id="refresh">Ververs</button>
   </div>
 
+  <div class="section">
+    <h2>Legenda</h2>
+    <p>
+      <strong>Endpoints:</strong><br/>
+      groen = OK (status 200, geeft resultaten terug)<br/>
+      rood = fout bij ophalen<br/><br/>
+      <strong>Sync status:</strong><br/>
+      groen = gesynchroniseerd binnen drempelwaarden (&lt;6 uur voor evenementen/prepr, &lt;24 uur voor collectie)<br/>
+      rood = te oud of foutmelding
+    </p>
+  </div>
+
   <div class="grid" id="grid"></div>
 
   <script>
     const problemHistory = {};
 
-    // Labels voor endpoints
     const endpointLabels = {
       "v-api": "oba-collectie api endpoint",
       "prepr-api": "prepr website content api endpoint",
@@ -79,24 +104,21 @@
       "wijzer-api": "wijzer / vestigingen api endpoint"
     };
 
-    // Labels voor bronnen
     const sourceLabels = {
       "library/v/oba": "oba collectie sync status",
       "misc/evenementen": "prepr/ip/ovatic evenementen sync status",
       "misc/preprcms": "prepr website content sync status"
     };
 
-    // Koppels: bron + endpoint
     const pairs = [
-      { source: "library/v/oba", endpoint: "v-api", label: "Collectie" },
-      { source: "misc/evenementen", endpoint: "evenementen-api", label: "Evenementen" },
-      { source: "misc/preprcms", endpoint: "prepr-api", label: "Prepr CMS" }
+      { source: "library/v/oba", endpoint: "v-api" },
+      { source: "misc/evenementen", endpoint: "evenementen-api" },
+      { source: "misc/preprcms", endpoint: "prepr-api" }
     ];
 
-    // Losse endpoints
     const singles = [
-      { endpoint: "ebooks-api", label: "Landelijke e-book/luisterboek collectie" },
-      { endpoint: "wijzer-api", label: "Wijzer / vestigingen api endpoint" }
+      { endpoint: "ebooks-api" },
+      { endpoint: "wijzer-api" }
     ];
 
     async function fetchAndRender() {
@@ -107,7 +129,6 @@
         ]);
 
         const xmlText = await obaRes.text();
-
         let endpoints = [];
         try {
           endpoints = await epRes.json();
@@ -123,7 +144,7 @@
         const problems = [];
         grid.innerHTML = '';
 
-        // Helper om bron-tegel te maken
+        // Helpers
         function makeSourceTile(dsNode, key, label) {
           if (!dsNode) {
             const tile = document.createElement('div');
@@ -140,7 +161,7 @@
           if (key === 'library/v/oba') {
             isProblem = status === 'ERROR' || dbAgeDays >= 1;
           } else {
-            isProblem = status === 'ERROR' || dbAgeDays >= 0.25; // 6 uur
+            isProblem = status === 'ERROR' || dbAgeDays >= 0.25;
           }
 
           const tile = document.createElement('div');
@@ -161,11 +182,9 @@
           } else {
             delete problemHistory[key];
           }
-
           return tile;
         }
 
-        // Helper om endpoint-tegel te maken
         function makeEndpointTile(ep, label) {
           const tile = document.createElement('div');
           tile.classList.add('tile', ep && ep.ok ? 'green' : 'red');
@@ -180,19 +199,19 @@
           return tile;
         }
 
-        // Pairs renderen
+        // Pairs (endpoint links, sync rechts)
         pairs.forEach(pair => {
           const ds = Array.from(datasources).find(d => (d.querySelector('dsid')?.textContent || '').trim() === pair.source);
           const ep = endpoints.find(e => e.id === pair.endpoint);
 
-          const sourceTile = makeSourceTile(ds, pair.source, sourceLabels[pair.source]);
           const endpointTile = makeEndpointTile(ep, endpointLabels[pair.endpoint]);
+          const sourceTile = makeSourceTile(ds, pair.source, sourceLabels[pair.source]);
 
-          grid.appendChild(sourceTile);
           grid.appendChild(endpointTile);
+          grid.appendChild(sourceTile);
         });
 
-        // Losse endpoints renderen (over 2 kolommen)
+        // Singles (span 2)
         singles.forEach(single => {
           const ep = endpoints.find(e => e.id === single.endpoint);
           const tile = makeEndpointTile(ep, endpointLabels[single.endpoint]);
@@ -200,9 +219,7 @@
           grid.appendChild(tile);
         });
 
-        if (problems.length > 0) {
-          notify(problems);
-        }
+        if (problems.length > 0) notify(problems);
         updateTimestamp();
       } catch (e) {
         console.error('Fout bij ophalen/parsen:', e);
@@ -234,7 +251,7 @@
 
     async function init() {
       await fetchAndRender();
-      setInterval(fetchAndRender, 300000); // elke 5 minuten
+      setInterval(fetchAndRender, 300000);
     }
 
     init();
