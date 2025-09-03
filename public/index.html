@@ -77,8 +77,14 @@
 
     async function fetchAndRender() {
       try {
-        const res = await fetch('/api/oba');
-        const xmlText = await res.text();
+        const [obaRes, epRes] = await Promise.all([
+          fetch('/api/oba'),
+          fetch('/api/endpoints')
+        ]);
+
+        const xmlText = await obaRes.text();
+        const endpoints = await epRes.json();
+
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlText, 'application/xml');
         const datasources = xml.querySelectorAll('datasource');
@@ -87,13 +93,25 @@
 
         grid.innerHTML = '';
 
+        // Datasource tiles
         datasources.forEach(ds => {
           const dsid = ds.querySelector('dsid')?.textContent || '';
-          const dbAge = parseFloat(ds.querySelector('db-age-days')?.textContent || '0');
+          const dbAgeDays = parseFloat(ds.querySelector('db-age-days')?.textContent || '0');
           const total = ds.querySelector('total-record-count')?.textContent || '0';
           const status = ds.querySelector('status')?.textContent || '';
 
-          const isProblem = status === 'ERROR' || dbAge > 0.5;
+          if (!['misc/evenementen', 'misc/preprcms', 'library/v/oba'].includes(dsid)) {
+            return;
+          }
+
+          const dbAgeHours = dbAgeDays * 24;
+
+          let isProblem = false;
+          if (dsid === 'library/v/oba') {
+            isProblem = status === 'ERROR' || dbAgeDays > 1;
+          } else {
+            isProblem = status === 'ERROR' || dbAgeDays > 0.5;
+          }
 
           const tile = document.createElement('div');
           tile.classList.add('tile');
@@ -101,7 +119,7 @@
 
           tile.innerHTML = `
             <strong>${dsid}</strong>
-            <div>tijd: ${dbAge.toFixed(2)}</div>
+            <div>leeftijd: ${dbAgeHours.toFixed(1)} uur</div>
             <div>aantal: ${total}</div>
             <div>status: ${status}</div>
           `;
@@ -112,9 +130,26 @@
               const now = new Date();
               problemHistory[dsid] = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
             }
-            problems.push(`${dsid} (status=${status}, leeftijd=${dbAge.toFixed(2)}, sinds ${problemHistory[dsid]})`);
+            problems.push(`${dsid} (status=${status}, leeftijd=${dbAgeHours.toFixed(1)}u, sinds ${problemHistory[dsid]})`);
           } else {
             delete problemHistory[dsid];
+          }
+        });
+
+        // Endpoint tiles
+        endpoints.forEach(ep => {
+          const tile = document.createElement('div');
+          tile.classList.add('tile');
+          tile.classList.add(ep.ok ? 'green' : 'red');
+          tile.innerHTML = `
+            <strong>${ep.id}</strong>
+            <div>endpoint: ${ep.ok ? 'OK' : 'FOUT'} (status ${ep.status})</div>
+            ${ep.count ? `<div>records: ${ep.count}</div>` : ""}
+          `;
+          grid.appendChild(tile);
+
+          if (!ep.ok) {
+            problems.push(`${ep.id} (endpoint niet OK, status ${ep.status})`);
           }
         });
 
