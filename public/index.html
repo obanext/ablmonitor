@@ -68,7 +68,7 @@
       <strong>OBA Monitor</strong>
       <div class="timestamp" id="timestamp">Laatst ververst: -</div>
     </div>
-    <button onclick="fetchAndRender()">Ververs</button>
+    <button id="refresh">Ververs</button>
   </div>
   <div class="grid" id="grid"></div>
 
@@ -83,7 +83,13 @@
         ]);
 
         const xmlText = await obaRes.text();
-        const endpoints = await epRes.json();
+
+        let endpoints = [];
+        try {
+          endpoints = await epRes.json();
+        } catch (err) {
+          console.error("Kon JSON niet parsen van /api/endpoints:", err);
+        }
 
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlText, 'application/xml');
@@ -179,10 +185,14 @@
       document.getElementById('timestamp').textContent = `Laatst ververst: ${datum} ${tijd}`;
     }
 
-    async function init() {
-      if (Notification.permission !== 'granted') {
+    document.getElementById("refresh").addEventListener("click", async () => {
+      if (Notification.permission !== "granted") {
         await Notification.requestPermission();
       }
+      await fetchAndRender();
+    });
+
+    async function init() {
       await fetchAndRender();
       setInterval(fetchAndRender, 300000); // elke 5 minuten
     }
