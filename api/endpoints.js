@@ -1,5 +1,3 @@
-import { DOMParser } from "xmldom";
-
 export default async function handler(req, res) {
   const API_KEY = process.env.OBA_API_KEY;
 
@@ -16,43 +14,16 @@ export default async function handler(req, res) {
         try {
           const resp = await fetch(ep.url);
           if (!resp.ok) {
-            return {
-              id: ep.id,
-              url: ep.url,
-              ok: false,
-              status: resp.status,
-            };
+            return { id: ep.id, url: ep.url, ok: false, status: resp.status };
           }
 
           const text = await resp.text();
-          let count = null;
+          const match = text.match(/<count>(\d+)<\/count>/);
+          const count = match ? match[1] : null;
 
-          try {
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(text, "text/xml");
-            const countNode = xml.getElementsByTagName("count")[0];
-            if (countNode) {
-              count = countNode.textContent;
-            }
-          } catch (parseErr) {
-            console.error(`Fout bij parsen XML voor ${ep.id}:`, parseErr);
-          }
-
-          return {
-            id: ep.id,
-            url: ep.url,
-            ok: true,
-            status: resp.status,
-            count,
-          };
+          return { id: ep.id, url: ep.url, ok: true, status: resp.status, count };
         } catch (e) {
-          return {
-            id: ep.id,
-            url: ep.url,
-            ok: false,
-            status: 0,
-            error: e.message,
-          };
+          return { id: ep.id, url: ep.url, ok: false, status: 0, error: e.message };
         }
       })
     );
