@@ -161,10 +161,19 @@
           }
         });
 
-        // Datasource tiles
-        datasources.forEach(ds => {
-          const dsid = ds.querySelector('dsid')?.textContent || '';
-          if (!Object.keys(sourceLabels).includes(dsid)) {
+        // Bronnen in vaste volgorde renderen
+        Object.keys(sourceLabels).forEach(key => {
+          const ds = Array.from(datasources).find(d => d.querySelector('dsid')?.textContent === key);
+
+          if (!ds) {
+            const tile = document.createElement('div');
+            tile.classList.add('tile', 'red');
+            tile.innerHTML = `
+              <strong>${sourceLabels[key]}</strong>
+              <div>status: niet gevonden</div>
+            `;
+            sourcesGrid.appendChild(tile);
+            problems.push(`${key} (niet gevonden in XML)`);
             return;
           }
 
@@ -174,7 +183,7 @@
           const dbAgeHours = dbAgeDays * 24;
 
           let isProblem = false;
-          if (dsid === 'library/v/oba') {
+          if (key === 'library/v/oba') {
             isProblem = status === 'ERROR' || dbAgeDays > 1;
           } else {
             isProblem = status === 'ERROR' || dbAgeDays > 0.25; // 6 uur
@@ -185,7 +194,7 @@
           tile.classList.add(isProblem ? 'red' : 'green');
 
           tile.innerHTML = `
-            <strong>${sourceLabels[dsid] || dsid}</strong>
+            <strong>${sourceLabels[key]}</strong>
             <div>leeftijd: ${dbAgeHours.toFixed(1)} uur</div>
             <div>aantal: ${total}</div>
             <div>status: ${status}</div>
@@ -193,13 +202,13 @@
           sourcesGrid.appendChild(tile);
 
           if (isProblem) {
-            if (!problemHistory[dsid]) {
+            if (!problemHistory[key]) {
               const now = new Date();
-              problemHistory[dsid] = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+              problemHistory[key] = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
             }
-            problems.push(`${dsid} (status=${status}, leeftijd=${dbAgeHours.toFixed(1)}u, sinds ${problemHistory[dsid]})`);
+            problems.push(`${key} (status=${status}, leeftijd=${dbAgeHours.toFixed(1)}u, sinds ${problemHistory[key]})`);
           } else {
-            delete problemHistory[dsid];
+            delete problemHistory[key];
           }
         });
 
