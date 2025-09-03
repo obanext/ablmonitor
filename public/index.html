@@ -17,7 +17,6 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
     }
     .header button {
       background: white;
@@ -36,13 +35,11 @@
     }
     .legend-grid {
       display: grid;
-      grid-template-columns: auto auto;
-      gap: 40px;
-      justify-content: center;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
       padding: 10px;
     }
     .legend {
-      max-width: 360px;
       font-size: 14px;
       color: #555;
     }
@@ -53,9 +50,8 @@
     }
     .grid {
       display: grid;
-      grid-template-columns: auto auto;
-      gap: 10px 40px;
-      justify-content: center;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
       padding: 10px;
       box-sizing: border-box;
     }
@@ -70,7 +66,6 @@
       font-size: 14px;
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
       min-height: 100px;
-      max-width: 360px;
     }
     .tile.red { background-color: red; }
     .tile.green { background-color: green; }
@@ -85,7 +80,6 @@
     <button id="refresh">Ververs</button>
   </div>
 
-  <!-- Legenda per kolom -->
   <div class="legend-grid">
     <div class="legend">
       <h2>Endpoints</h2>
@@ -224,9 +218,12 @@
 
         singles.forEach(single => {
           const ep = endpoints.find(e => e.id === single.endpoint);
-          const tile = makeEndpointTile(ep, endpointLabels[single.endpoint]);
-          tile.style.gridColumn = "span 2";
-          grid.appendChild(tile);
+          const endpointTile = makeEndpointTile(ep, endpointLabels[single.endpoint]);
+          const emptyTile = document.createElement('div');
+          emptyTile.classList.add('tile');
+          emptyTile.style.visibility = "hidden"; // lege rechter kolom
+          grid.appendChild(endpointTile);
+          grid.appendChild(emptyTile);
         });
 
         if (problems.length > 0) notify(problems);
