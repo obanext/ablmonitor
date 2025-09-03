@@ -60,6 +60,9 @@
     .tile.green {
       background-color: green;
     }
+    .tile.gray {
+      background-color: #777;
+    }
   </style>
 </head>
 <body>
@@ -106,39 +109,45 @@
           const total = ds.querySelector('total-record-count')?.textContent || '0';
           const status = ds.querySelector('status')?.textContent || '';
 
-          if (!['misc/evenementen', 'misc/preprcms', 'library/v/oba'].includes(dsid)) {
-            return;
-          }
+          console.log("Datasource gevonden:", dsid);
 
-          const dbAgeHours = dbAgeDays * 24;
+          if (['misc/evenementen', 'misc/preprcms', 'library/v/oba'].includes(dsid)) {
+            const dbAgeHours = dbAgeDays * 24;
 
-          let isProblem = false;
-          if (dsid === 'library/v/oba') {
-            isProblem = status === 'ERROR' || dbAgeDays > 1;
-          } else {
-            isProblem = status === 'ERROR' || dbAgeDays > 0.5;
-          }
-
-          const tile = document.createElement('div');
-          tile.classList.add('tile');
-          tile.classList.add(isProblem ? 'red' : 'green');
-
-          tile.innerHTML = `
-            <strong>${dsid}</strong>
-            <div>leeftijd: ${dbAgeHours.toFixed(1)} uur</div>
-            <div>aantal: ${total}</div>
-            <div>status: ${status}</div>
-          `;
-          grid.appendChild(tile);
-
-          if (isProblem) {
-            if (!problemHistory[dsid]) {
-              const now = new Date();
-              problemHistory[dsid] = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            let isProblem = false;
+            if (dsid === 'library/v/oba') {
+              isProblem = status === 'ERROR' || dbAgeDays > 1;
+            } else {
+              isProblem = status === 'ERROR' || dbAgeDays > 0.5;
             }
-            problems.push(`${dsid} (status=${status}, leeftijd=${dbAgeHours.toFixed(1)}u, sinds ${problemHistory[dsid]})`);
+
+            const tile = document.createElement('div');
+            tile.classList.add('tile');
+            tile.classList.add(isProblem ? 'red' : 'green');
+
+            tile.innerHTML = `
+              <strong>${dsid}</strong>
+              <div>leeftijd: ${dbAgeHours.toFixed(1)} uur</div>
+              <div>aantal: ${total}</div>
+              <div>status: ${status}</div>
+            `;
+            grid.appendChild(tile);
+
+            if (isProblem) {
+              if (!problemHistory[dsid]) {
+                const now = new Date();
+                problemHistory[dsid] = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+              }
+              problems.push(`${dsid} (status=${status}, leeftijd=${dbAgeHours.toFixed(1)}u, sinds ${problemHistory[dsid]})`);
+            } else {
+              delete problemHistory[dsid];
+            }
           } else {
-            delete problemHistory[dsid];
+            // Onbekende datasource: grijze tegel
+            const tile = document.createElement('div');
+            tile.classList.add('tile', 'gray');
+            tile.innerHTML = `<strong>Onbekend</strong><div>${dsid}</div>`;
+            grid.appendChild(tile);
           }
         });
 
