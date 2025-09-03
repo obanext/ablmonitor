@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
   try {
     const results = await Promise.all(
-      ENDPOINTS.map(async ep => {
+      ENDPOINTS.map(async (ep) => {
         try {
           const resp = await fetch(ep.url);
           if (!resp.ok) {
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
               id: ep.id,
               url: ep.url,
               ok: false,
-              status: resp.status
+              status: resp.status,
             };
           }
 
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
           try {
             const parser = new DOMParser();
-            const xml = parser.parseFromString(text, "application/xml");
+            const xml = parser.parseFromString(text, "text/xml");
             const countNode = xml.getElementsByTagName("count")[0];
             if (countNode) {
               count = countNode.textContent;
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
             url: ep.url,
             ok: true,
             status: resp.status,
-            count
+            count,
           };
         } catch (e) {
           return {
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
             url: ep.url,
             ok: false,
             status: 0,
-            error: e.message
+            error: e.message,
           };
         }
       })
@@ -61,6 +61,7 @@ export default async function handler(req, res) {
     res.setHeader("Content-Type", "application/json");
     res.status(200).json(results);
   } catch (e) {
+    console.error("Fout in /api/endpoints:", e);
     res.status(500).json({ error: "Interne fout bij ophalen endpoints" });
   }
 }
