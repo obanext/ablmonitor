@@ -5,7 +5,8 @@ export default async function handler(req, res) {
     { id: "evenementen-api", url: `https://zoeken.oba.nl/api/v1/search/?q=%20table:evenementen&authorization=${API_KEY}` },
     { id: "v-api", url: `https://zoeken.oba.nl/api/v1/search/?q=%20table:v&authorization=${API_KEY}` },
     { id: "prepr-api", url: `https://zoeken.oba.nl/api/v1/search/?q=%20table:prepr&authorization=${API_KEY}` },
-    { id: "ebooks-api", url: `https://zoeken.oba.nl/ebooks/api/v1/search/?q=%20special:all&authorization=${API_KEY}` }
+    { id: "ebooks-api", url: `https://zoeken.oba.nl/ebooks/api/v1/search/?q=%20special:all&authorization=${API_KEY}` },
+    { id: "wijzer-api", url: `https://zoeken.oba.nl/api/v1/holdings/root/OBA/?authorization=${API_KEY}` }
   ];
 
   try {
