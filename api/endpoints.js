@@ -1,3 +1,4 @@
+// api/endpoints.js
 export default async function handler(req, res) {
   const API_KEY = process.env.OBA_API_KEY;
 
@@ -29,11 +30,11 @@ export default async function handler(req, res) {
       })
     );
 
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Content-Type", "application/json");
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'application/json');
     res.status(200).json(results);
-  } catch (e) {
-    console.error("Fout in /api/endpoints:", e);
-    res.status(500).json({ error: "Interne fout bij ophalen endpoints" });
+  } catch (error) {
+    console.error('Fout in /api/endpoints:', error);
+    res.status(500).json({ error: 'Interne fout bij ophalen endpoints' });
   }
 }
