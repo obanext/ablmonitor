@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ABL OBA-API MONITOR</title>
+  <title>ABL OBA-API Monitor</title>
   <style>
     body {
       margin: 0;
@@ -56,7 +56,6 @@
       box-sizing: border-box;
     }
     .tile {
-      background-color: green;
       color: white;
       padding: 10px;
       border-radius: 8px;
@@ -65,16 +64,17 @@
       justify-content: center;
       font-size: 14px;
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
-      min-height: 100px;
+      min-height: 120px;
     }
-    .tile.red { background-color: red; }
     .tile.green { background-color: green; }
+    .tile.orange { background-color: orange; }
+    .tile.red { background-color: red; }
   </style>
 </head>
 <body>
   <div class="header">
     <div>
-      <strong>ABL OBA-API MONITOR</strong>
+      <strong>ABL OBA-API Monitor</strong>
       <div class="timestamp" id="timestamp">Laatst ververst: -</div>
     </div>
     <button id="refresh">Ververs</button>
@@ -89,11 +89,11 @@
       </p>
     </div>
     <div class="legend">
-      <h2>Sync status</h2>
+      <h2>Synchronisatiestatus</h2>
       <p>
-        groen = gesynchroniseerd binnen drempelwaarden<br/>
-        (&lt;6 uur voor evenementen en prepr, &lt;24 uur voor collectie)<br/>
-        rood = te oud of foutmelding
+        groen = status OK of RUNNING, laatste update tijdens huidige/laatste nacht of handmatig overdag<br/>
+        oranje = geen update tijdens laatste nacht<br/>
+        rood = status niet OK of twee nachten zonder update
       </p>
     </div>
   </div>
@@ -104,17 +104,17 @@
     const problemHistory = {};
 
     const endpointLabels = {
-      "v-api": "oba-collectie api endpoint",
-      "prepr-api": "prepr website content api endpoint",
-      "evenementen-api": "prepr/ip/ovatic evenementen api endpoint",
-      "ebooks-api": "landelijke e-book/luisterboek collectie api endpoint",
-      "wijzer-api": "wijzer / vestigingen api endpoint"
+      "v-api": "OBA collectie API endpoint",
+      "prepr-api": "Prepr website content API endpoint",
+      "evenementen-api": "Prepr/Ovatic evenementen API endpoint",
+      "ebooks-api": "Landelijke e-book/luisterboek API endpoint",
+      "wijzer-api": "Wijzer / vestigingen API endpoint"
     };
 
     const sourceLabels = {
-      "library/v/oba": "oba collectie sync status",
-      "misc/evenementen": "prepr/ip/ovatic evenementen sync status",
-      "misc/preprcms": "prepr website content sync status"
+      "library/v/oba": "OBA collectie synchronisatie",
+      "misc/evenementen": "Evenementen synchronisatie",
+      "misc/preprcms": "Prepr website content synchronisatie"
     };
 
     const pairs = [
@@ -140,7 +140,7 @@
         try {
           endpoints = await epRes.json();
         } catch (err) {
-          console.error("Kon JSON niet parsen van /api/endpoints:", err);
+          console.error("Fout bij parsen van /api/endpoints:", err);
         }
 
         const parser = new DOMParser();
@@ -158,36 +158,84 @@
             tile.innerHTML = `<strong>${label}</strong><div>status: niet gevonden</div>`;
             return tile;
           }
-          const dbAgeDays = parseFloat((dsNode.querySelector('db-age-days')?.textContent || '0').trim());
-          const total = (dsNode.querySelector('total-record-count')?.textContent || '0').trim();
-          const status = (dsNode.querySelector('status')?.textContent || '').trim();
-          const dbAgeHours = dbAgeDays * 24;
 
-          let isProblem = false;
+          const dbAgeDays = parseFloat((dsNode.getAttribute('db-age-days') || '0').trim());
+          const dbAgeHours = dbAgeDays * 24;
+          const status = (dsNode.getAttribute('status') || '').trim().toUpperCase();
+          const totalAdded = dsNode.getAttribute('total-added') || '0';
+          const totalDeleted = dsNode.getAttribute('total-deleted') || '0';
+          const duration = parseFloat(dsNode.getAttribute('duration-seconds') || '0').toFixed(1);
+          const startTime = dsNode.getAttribute('start-time') || '-';
+          const endTime = dsNode.getAttribute('end-time') || '-';
+
+          let colorClass = 'green';
+
           if (key === 'library/v/oba') {
-            isProblem = status === 'ERROR' || dbAgeDays >= 1;
+            const now = new Date();
+            const lastRunDate = new Date(now.getTime() - dbAgeDays * 24 * 60 * 60 * 1000);
+
+            // Bereken nachtvensters
+            const today = new Date(now);
+            const nightStart = new Date(today);
+            const nightEnd = new Date(today);
+            nightStart.setHours(22, 0, 0, 0);
+            nightEnd.setHours(6, 0, 0, 0);
+            if (now.getHours() < 6) nightStart.setDate(today.getDate() - 1);
+            else nightEnd.setDate(today.getDate() + 1);
+
+            const prevNightStart = new Date(nightStart);
+            const prevNightEnd = new Date(nightEnd);
+            prevNightStart.setDate(prevNightStart.getDate() - 1);
+            prevNightEnd.setDate(prevNightEnd.getDate() - 1);
+
+            const inLastNight = lastRunDate >= nightStart && lastRunDate <= nightEnd;
+            const inPrevNight = lastRunDate >= prevNightStart && lastRunDate <= prevNightEnd;
+
+            if (status !== 'OK' && status !== 'RUNNING') {
+              colorClass = 'red';
+            } else if (inLastNight || dbAgeDays < 1) {
+              colorClass = 'green';
+            } else if (inPrevNight) {
+              colorClass = 'orange';
+            } else {
+              colorClass = 'red';
+            }
           } else {
-            isProblem = status === 'ERROR' || dbAgeDays >= 0.25;
+            // Overige bronnen
+            const orangeThresholdDays = 0.25; // 6 uur
+            const redThresholdDays = 1;       // 24 uur
+
+            if (dbAgeDays >= redThresholdDays) {
+              colorClass = 'red';
+            } else if (status !== 'OK' && status !== 'RUNNING') {
+              colorClass = 'red';
+            } else if (dbAgeDays >= orangeThresholdDays) {
+              colorClass = 'orange';
+            }
           }
 
           const tile = document.createElement('div');
-          tile.classList.add('tile', isProblem ? 'red' : 'green');
+          tile.classList.add('tile', colorClass);
           tile.innerHTML = `
             <strong>${label}</strong>
-            <div>leeftijd: ${dbAgeHours.toFixed(1)} uur</div>
-            <div>aantal: ${total}</div>
             <div>status: ${status}</div>
+            <div>leeftijd: ${dbAgeHours.toFixed(1)} uur</div>
+            <div>toegevoegd: ${totalAdded}, verwijderd: ${totalDeleted}</div>
+            <div>duur: ${duration} sec</div>
+            <div>van: ${startTime}</div>
+            <div>tot: ${endTime}</div>
           `;
 
-          if (isProblem) {
+          if (colorClass !== 'green') {
             if (!problemHistory[key]) {
               const now = new Date();
               problemHistory[key] = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
             }
-            problems.push(`${label} (status=${status}, leeftijd=${dbAgeHours.toFixed(1)}u, sinds ${problemHistory[key]})`);
+            problems.push(`${label} (${status}, ${dbAgeHours.toFixed(1)}u oud, sinds ${problemHistory[key]})`);
           } else {
             delete problemHistory[key];
           }
+
           return tile;
         }
 
@@ -199,19 +247,15 @@
             <div>endpoint: ${ep && ep.ok ? 'OK' : 'FOUT'} (status ${ep ? ep.status : '-'})</div>
             ${ep && ep.count ? `<div>records: ${ep.count}</div>` : ""}
           `;
-          if (!ep || !ep.ok) {
-            problems.push(`${label} (endpoint niet OK)`);
-          }
+          if (!ep || !ep.ok) problems.push(`${label} (endpoint niet OK)`);
           return tile;
         }
 
         pairs.forEach(pair => {
-          const ds = Array.from(datasources).find(d => (d.querySelector('dsid')?.textContent || '').trim() === pair.source);
+          const ds = Array.from(datasources).find(d => (d.getAttribute('id') || '').trim().replace(/\\/g, '/') === pair.source);
           const ep = endpoints.find(e => e.id === pair.endpoint);
-
           const endpointTile = makeEndpointTile(ep, endpointLabels[pair.endpoint]);
           const sourceTile = makeSourceTile(ds, pair.source, sourceLabels[pair.source]);
-
           grid.appendChild(endpointTile);
           grid.appendChild(sourceTile);
         });
@@ -221,7 +265,7 @@
           const endpointTile = makeEndpointTile(ep, endpointLabels[single.endpoint]);
           const emptyTile = document.createElement('div');
           emptyTile.classList.add('tile');
-          emptyTile.style.visibility = "hidden"; // lege rechter kolom
+          emptyTile.style.visibility = "hidden";
           grid.appendChild(endpointTile);
           grid.appendChild(emptyTile);
         });
@@ -229,7 +273,7 @@
         if (problems.length > 0) notify(problems);
         updateTimestamp();
       } catch (e) {
-        console.error('Fout bij ophalen/parsen:', e);
+        console.error('Fout bij ophalen of verwerken:', e);
       }
     }
 
