@@ -65,6 +65,7 @@
       font-size: 14px;
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
       min-height: 120px;
+      line-height: 1.4;
     }
     .tile.green { background-color: green; }
     .tile.orange { background-color: orange; }
@@ -85,7 +86,7 @@
       <h2>Endpoints</h2>
       <p>
         groen = OK (status 200, geeft resultaten terug)<br/>
-        rood = fout bij ophalen
+        rood = fout bij ophalen. Informeer I&A
       </p>
     </div>
     <div class="legend">
@@ -151,6 +152,12 @@
         const problems = [];
         grid.innerHTML = '';
 
+        function formatTimeDiff(hoursTotal) {
+          const uren = Math.floor(hoursTotal);
+          const minuten = Math.round((hoursTotal - uren) * 60);
+          return `${uren} uur ${minuten} minuten geleden`;
+        }
+
         function makeSourceTile(dsNode, key, label) {
           if (!dsNode) {
             const tile = document.createElement('div');
@@ -162,9 +169,6 @@
           const dbAgeDays = parseFloat((dsNode.getAttribute('db-age-days') || '0').trim());
           const dbAgeHours = dbAgeDays * 24;
           const status = (dsNode.getAttribute('status') || '').trim().toUpperCase();
-          const totalAdded = dsNode.getAttribute('total-added') || '0';
-          const totalDeleted = dsNode.getAttribute('total-deleted') || '0';
-          const duration = parseFloat(dsNode.getAttribute('duration-seconds') || '0').toFixed(1);
           const startTime = dsNode.getAttribute('start-time') || '-';
           const endTime = dsNode.getAttribute('end-time') || '-';
 
@@ -174,7 +178,6 @@
             const now = new Date();
             const lastRunDate = new Date(now.getTime() - dbAgeDays * 24 * 60 * 60 * 1000);
 
-            // Bereken nachtvensters
             const today = new Date(now);
             const nightStart = new Date(today);
             const nightEnd = new Date(today);
@@ -201,10 +204,8 @@
               colorClass = 'red';
             }
           } else {
-            // Overige bronnen
-            const orangeThresholdDays = 0.25; // 6 uur
-            const redThresholdDays = 1;       // 24 uur
-
+            const orangeThresholdDays = 0.25;
+            const redThresholdDays = 1;
             if (dbAgeDays >= redThresholdDays) {
               colorClass = 'red';
             } else if (status !== 'OK' && status !== 'RUNNING') {
@@ -219,11 +220,8 @@
           tile.innerHTML = `
             <strong>${label}</strong>
             <div>status: ${status}</div>
-            <div>leeftijd: ${dbAgeHours.toFixed(1)} uur</div>
-            <div>toegevoegd: ${totalAdded}, verwijderd: ${totalDeleted}</div>
-            <div>duur: ${duration} sec</div>
-            <div>van: ${startTime}</div>
-            <div>tot: ${endTime}</div>
+            <div>laatste update: ${formatTimeDiff(dbAgeHours)}</div>
+            <div>start: ${startTime} eind: ${endTime}</div>
           `;
 
           if (colorClass !== 'green') {
